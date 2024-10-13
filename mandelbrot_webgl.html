@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mandelbrot Set Smooth Zoom</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; cursor: crosshair; }
+    </style>
+</head>
+<body>
+    <canvas id="mandelbrotCanvas"></canvas>
+
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('mandelbrotCanvas');
+            const ctx = canvas.getContext('2d');
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                drawMandelbrot();
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+
+            let minX = -2.5, maxX = 1;
+            let minY = -1, maxY = 1;
+
+            let animating = false;
+            let animationStartTime;
+            let animationDuration = 500; // in milliseconds
+            let startMinX, startMaxX, startMinY, startMaxY;
+            let targetMinX, targetMaxX, targetMinY, targetMaxY;
+
+            function drawMandelbrot() {
+                const width = canvas.width;
+                const height = canvas.height;
+
+                // Adjust max iterations based on zoom level
+                const scale = maxX - minX;
+                let maxIter = Math.floor(250 + (-Math.log10(scale)) * 100);
+
+                const imageData = ctx.createImageData(width, height);
+                const data = imageData.data;
+
+                for (let py = 0; py < height; py++) {
+                    const y0 = minY + (py / height) * (maxY - minY);
+                    for (let px = 0; px < width; px++) {
+                        const x0 = minX + (px / width) * (maxX - minX);
+                        let x = 0, y = 0;
+                        let iteration = 0;
+
+                        while (x * x + y * y <= 4 && iteration < maxIter) {
+                            const xTemp = x * x - y * y + x0;
+                            y = 2 * x * y + y0;
+                            x = xTemp;
+                            iteration++;
+                        }
+
+                        const idx = 4 * (px + py * width);
+
+                        if (iteration === maxIter) {
+                            data[idx] = data[idx + 1] = data[idx + 2] = 0;
+                        } else {
+                            const hue = iteration / maxIter;
+                            const rgb = HSVtoRGB(hue, 1, 1);
+                            data[idx] = rgb.r;
+                            data[idx + 1] = rgb.g;
+                            data[idx + 2] = rgb.b;
+                        }
+                        data[idx + 3] = 255;
+                    }
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+            }
+
+            function HSVtoRGB(h, s, v) {
+                let r, g, b;
+                let i = Math.floor(h * 6);
+                let f = h * 6 - i;
+                let p = v * (1 - s);
+                let q = v * (1 - f * s);
+                let t = v * (1 - (1 - f) * s);
+
+                switch (i % 6) {
+                    case 0: r = v; g = t; b = p; break;
+                    case 1: r = q; g = v; b = p; break;
+                    case 2: r = p; g = v; b = t; break;
+                    case 3: r = p; g = q; b = v; break;
+                    case 4: r = t; g = p; b = v; break;
+                    case 5: r = v; g = p; b = q; break;
+                }
+
+                return {
+                    r: Math.floor(r * 255),
+                    g: Math.floor(g * 255),
+                    b: Math.floor(b * 255)
+                };
+            }
+
+            function zoom(factor, centerX, centerY) {
+                if (animating) return; // Prevent multiple animations at once
+
+                startMinX = minX;
+                startMaxX = maxX;
+                startMinY = minY;
+                startMaxY = maxY;
+
+                const rangeX = maxX - minX;
+                const rangeY = maxY - minY;
+
+                const newRangeX = rangeX * factor;
+                const newRangeY = rangeY * factor;
+
+                targetMinX = centerX - newRangeX / 2;
+                targetMaxX = centerX + newRangeX / 2;
+                targetMinY = centerY - newRangeY / 2;
+                targetMaxY = centerY + newRangeY / 2;
+
+                animating = true;
+                animationStartTime = performance.now();
+                requestAnimationFrame(animateZoom);
+            }
+
+            function animateZoom(timestamp) {
+                let progress = (timestamp - animationStartTime) / animationDuration;
+                if (progress >= 1) {
+                    progress = 1;
+                    animating = false;
+                }
+
+                // Interpolate between start and target boundaries
+                minX = startMinX + (targetMinX - startMinX) * progress;
+                maxX = startMaxX + (targetMaxX - startMaxX) * progress;
+                minY = startMinY + (targetMinY - startMinY) * progress;
+                maxY = startMaxY + (targetMaxY - startMaxY) * progress;
+
+                drawMandelbrot();
+
+                if (animating) {
+                    requestAnimationFrame(animateZoom);
+                }
+            }
+
+            function getComplexCoord(pixelX, pixelY) {
+                const width = canvas.width;
+                const height = canvas.height;
+                const x = minX + (pixelX / width) * (maxX - minX);
+                const y = minY + (pixelY / height) * (maxY - minY);
+                return { x: x, y: y };
+            }
+
+            function handleWheel(event) {
+                event.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                const zoomFactor = event.deltaY < 0 ? 0.8 : 1.25;
+                const coord = getComplexCoord(mouseX, mouseY);
+                zoom(zoomFactor, coord.x, coord.y);
+            }
+
+            function handleClick(event) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                const coord = getComplexCoord(mouseX, mouseY);
+                zoom(0.5, coord.x, coord.y);
+            }
+
+            function handleRightClick(event) {
+                event.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                const coord = getComplexCoord(mouseX, mouseY);
+                zoom(2, coord.x, coord.y);
+            }
+
+            canvas.addEventListener('wheel', handleWheel);
+            canvas.addEventListener('click', handleClick);
+            canvas.addEventListener('contextmenu', handleRightClick);
+
+            // Initial draw
+            resizeCanvas();
+        };
+    </script>
+</body>
+</html>
