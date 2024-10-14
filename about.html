@@ -1,48 +1,558 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8576818709979096"
-     crossorigin="anonymous"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meagan's Sims Builds - About</title>
-    <!-- Add your custom stylesheet here -->
-    <link rel="stylesheet" href="styles.css">
+    <title>Mandelbrot Set Smooth Zoom - Enhanced</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1e1e1e; }
+        canvas { display: block; cursor: crosshair; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #333;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        input[type="range"], select, input[type="text"] {
+            width: 150px;
+        }
+        label {
+            color: white;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            background-color: #444;
+            border: none;
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <nav>
-            <!-- Add your logo and website title -->
-            <h1>Meagan's Sims Builds</h1>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="builds.html">Builds</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
+    <div id="controls">
+        <label for="centerXControl">Center X Coordinate:</label>
+        <input type="range" id="centerXControl" min="-2.5" max="1" step="0.01" value="-0.75">
+        <label for="centerYControl">Center Y Coordinate:</label>
+        <input type="range" id="centerYControl" min="-1" max="1" step="0.01" value="0">
+        <label for="fractalTypeControl">Fractal Type:</label>
+        <select id="fractalTypeControl">
+            <option value="mandelbrot">Mandelbrot</option>
+            <option value="julia">Julia Set</option>
+            <option value="burningship">Burning Ship</option>
+            <option value="tricorn">Tricorn</option>
+            <option value="newton">Newton Fractal</option>
+            <option value="phoenix">Phoenix Fractal</option>
+        </select>
+        <label for="brightnessControl">Brightness:</label>
+        <input type="range" id="brightnessControl" min="0.5" max="2" step="0.1" value="1">
+        <label for="contrastControl">Contrast:</label>
+        <input type="range" id="contrastControl" min="0.5" max="2" step="0.1" value="1">
+        <label for="colorControl">Color Scheme:</label>
+        <select id="colorControl">
+            <option value="default">Default</option>
+            <option value="blue">Blue</option>
+            <option value="red">Red</option>
+            <option value="green">Green</option>
+            <option value="purple">Purple</option>
+            <option value="rainbow">Rainbow</option>
+            <option value="grayscale">Grayscale</option>
+        </select>
+        <button id="resetBtn">Reset</button>
+        <button id="saveImageBtn">Save Image</button>
+        <label for="coordinatesDisplay">Center Coordinates:</label>
+        <input type="text" id="coordinatesDisplay" readonly>
+        <label for="zoomLevelDisplay">Zoom Level:</label>
+        <input type="text" id="zoomLevelDisplay" readonly>
+        <button id="zoomToggleBtn">Start Zoom Animation</button>
+        <label for="speedControl">Speed (ms):</label>
+        <input type="range" id="speedControl" min="500" max="10000" value="3000">
+        <label for="maxIterControl">Max Iterations:</label>
+        <input type="range" id="maxIterControl" min="100" max="2000" value="500">
+        <label for="zoomFactorControl">Zoom Factor (per step):</label>
+        <input type="range" id="zoomFactorControl" min="990" max="999" value="993">
+    </div>
+    <canvas id="mandelbrotCanvas"></canvas>
 
-    <main>
-        <h2>About Meagan</h2>
-        <!-- Add your image and bio here -->
-        <div class="about-container">
-            <img src="path/to/your/profile/image.jpg" alt="Megan">
-            <div class="about-text">
-                <p>Hello! My name is Megan, and I'm passionate about creating custom Sims builds. I've been playing The Sims since its early days and have always enjoyed sharing my creations with fellow players.</p>
-                <p>On this website, you'll find a collection of my favorite builds, ranging from cozy starter homes to extravagant mansions and community lots. I hope you enjoy them as much as I enjoyed creating them. Feel free to download and use them in your game, and don't forget to share your experience with me on social media!</p>
-            </div>
-        </div>
-    </main>
+    <script>
+        // Main thread script
+        window.onload = function() {
+            const canvas = document.getElementById('mandelbrotCanvas');
+            const ctx = canvas.getContext('2d');
 
-    <footer>
-        <p>&copy; 2023 Meagan's Sims Builds. All Rights Reserved.</p>
-        <!-- Add your social media links here -->
-        <ul>
-            <li><a href="https://twitter.com/MeaganJo_Sims">Twitter</a></li>
-            <li><a href="https://instagram.com/yourusername">Instagram</a></li>
-            <li><a href="https://youtube.com/MeaganJoSims">YouTube</a></li>
-        </ul>
-    </footer>
+            // Control Elements
+            const zoomToggleBtn = document.getElementById('zoomToggleBtn');
+            const speedControl = document.getElementById('speedControl');
+            const maxIterControl = document.getElementById('maxIterControl');
+            const zoomFactorControl = document.getElementById('zoomFactorControl');
+            const colorControl = document.getElementById('colorControl');
+            const fractalTypeControl = document.getElementById('fractalTypeControl');
+            const brightnessControl = document.getElementById('brightnessControl');
+            const contrastControl = document.getElementById('contrastControl');
+            const resetBtn = document.getElementById('resetBtn');
+            const coordinatesDisplay = document.getElementById('coordinatesDisplay');
+            const zoomLevelDisplay = document.getElementById('zoomLevelDisplay');
+            const saveImageBtn = document.getElementById('saveImageBtn');
+            const centerXControl = document.getElementById('centerXControl');
+            const centerYControl = document.getElementById('centerYControl');
+
+            // State Variables
+            let minX = -2.5, maxX = 1;
+            let minY = -1, maxY = 1;
+            let animating = false;
+            let animationDuration = parseInt(speedControl.value); // in milliseconds
+            let autoZoomFactor = parseFloat(zoomFactorControl.value) / 1000;
+            let autoZoomAnimationFrame;
+            let isDragging = false;
+            let startX, startY, endX, endY;
+
+            // Web Worker Setup
+            let worker;
+            if (window.Worker) {
+                const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
+                const workerURL = URL.createObjectURL(workerBlob);
+                worker = new Worker(workerURL);
+            } else {
+                alert("Your browser does not support Web Workers. The application may not perform optimally.");
+            }
+
+            // Handle messages from the worker
+            worker.onmessage = function(e) {
+                const imageData = e.data;
+                ctx.putImageData(imageData, 0, 0);
+            };
+
+            // Initialize parameters and render
+            function initializeFractal() {
+                const params = getCurrentParameters();
+                worker.postMessage({ type: 'render', params });
+            }
+
+            // Get current parameters from controls
+            function getCurrentParameters() {
+                const fractalType = fractalTypeControl.value;
+                const colorScheme = colorControl.value;
+                const brightness = parseFloat(brightnessControl.value);
+                const contrast = parseFloat(contrastControl.value);
+                const maxIter = parseInt(maxIterControl.value);
+                const width = canvas.width;
+                const height = canvas.height;
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                const zoomLevel = (1 / (maxX - minX)).toFixed(2);
+
+                return {
+                    minX, maxX, minY, maxY,
+                    fractalType,
+                    colorScheme,
+                    brightness,
+                    contrast,
+                    maxIter,
+                    width,
+                    height
+                };
+            }
+
+            // Resize Canvas
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                initializeFractal();
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+
+            // Control Event Listeners
+            speedControl.addEventListener('input', () => {
+                animationDuration = parseInt(speedControl.value);
+            });
+
+            maxIterControl.addEventListener('input', () => {
+                initializeFractal();
+            });
+
+            zoomFactorControl.addEventListener('input', () => {
+                autoZoomFactor = parseFloat(zoomFactorControl.value) / 1000;
+            });
+
+            colorControl.addEventListener('change', () => {
+                initializeFractal();
+            });
+
+            fractalTypeControl.addEventListener('change', () => {
+                initializeFractal();
+            });
+
+            brightnessControl.addEventListener('input', () => {
+                initializeFractal();
+            });
+
+            contrastControl.addEventListener('input', () => {
+                initializeFractal();
+            });
+
+            resetBtn.addEventListener('click', resetView);
+            saveImageBtn.addEventListener('click', saveImage);
+
+            zoomToggleBtn.addEventListener('click', () => {
+                animating = !animating;
+                if (animating) {
+                    zoomToggleBtn.textContent = 'Stop Zoom Animation';
+                    startAutoZoomSmooth();
+                } else {
+                    zoomToggleBtn.textContent = 'Start Zoom Animation';
+                    cancelAnimationFrame(autoZoomAnimationFrame);
+                }
+            });
+
+            // Mouse and Touch Events for Zooming
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.offsetX;
+                startY = e.offsetY;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    endX = e.offsetX;
+                    endY = e.offsetY;
+                    drawMandelbrot(); // Redraw base fractal
+                    drawZoomBox();
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if (isDragging) {
+                    isDragging = false;
+                    endX = e.offsetX;
+                    endY = e.offsetY;
+                    applyZoomBox();
+                }
+            });
+
+            // Touch Events for Mobile Devices
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    startX = touch.clientX - rect.left;
+                    startY = touch.clientY - rect.top;
+                    isDragging = true;
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (isDragging && e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    endX = touch.clientX - rect.left;
+                    endY = touch.clientY - rect.top;
+                    drawMandelbrot(); // Redraw base fractal
+                    drawZoomBox();
+                }
+            });
+
+            canvas.addEventListener('touchend', (e) => {
+                if (isDragging) {
+                    isDragging = false;
+                    applyZoomBox();
+                }
+            });
+
+            // Drawing Functions
+            function drawZoomBox() {
+                ctx.strokeStyle = 'yellow';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                const rectX = Math.min(startX, endX);
+                const rectY = Math.min(startY, endY);
+                const rectWidth = Math.abs(endX - startX);
+                const rectHeight = Math.abs(endY - startY);
+                ctx.strokeRect(rectX, rectY, rectWidth, rectHeight);
+                ctx.setLineDash([]);
+            }
+
+            function applyZoomBox() {
+                const width = canvas.width;
+                const height = canvas.height;
+
+                const x0 = Math.min(startX, endX);
+                const x1 = Math.max(startX, endX);
+                const y0 = Math.min(startY, endY);
+                const y1 = Math.max(startY, endY);
+
+                // Ensure minimum zoom box size
+                if (Math.abs(x1 - x0) < 10 || Math.abs(y1 - y0) < 10) {
+                    return;
+                }
+
+                const newMinX = minX + (x0 / width) * (maxX - minX);
+                const newMaxX = minX + (x1 / width) * (maxX - minX);
+                const newMinY = minY + (y0 / height) * (maxY - minY);
+                const newMaxY = minY + (y1 / height) * (maxY - minY);
+
+                minX = newMinX;
+                maxX = newMaxX;
+                minY = newMinY;
+                maxY = newMaxY;
+
+                initializeFractal();
+            }
+
+            function startAutoZoomSmooth() {
+                if (!animating) return;
+
+                const params = getCurrentParameters();
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                const rangeX = (maxX - minX) * autoZoomFactor;
+                const rangeY = (maxY - minY) * autoZoomFactor;
+
+                // Smooth interpolation
+                minX = lerp(minX, centerX - rangeX / 2, 0.05);
+                maxX = lerp(maxX, centerX + rangeX / 2, 0.05);
+                minY = lerp(minY, centerY - rangeY / 2, 0.05);
+                maxY = lerp(maxY, centerY + rangeY / 2, 0.05);
+
+                initializeFractal();
+
+                autoZoomAnimationFrame = setTimeout(startAutoZoomSmooth, animationDuration);
+            }
+
+            function lerp(start, end, t) {
+                return start + (end - start) * t;
+            }
+
+            function updateCoordinatesDisplay() {
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                coordinatesDisplay.value = `X: ${centerX.toFixed(5)}, Y: ${centerY.toFixed(5)}`;
+                zoomLevelDisplay.value = `Zoom: ${(1 / (maxX - minX)).toFixed(2)}x`;
+            }
+
+            function resetView() {
+                minX = -2.5;
+                maxX = 1;
+                minY = -1;
+                maxY = 1;
+                initializeFractal();
+            }
+
+            function saveImage() {
+                const link = document.createElement('a');
+                link.download = 'fractal.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+
+            // Initial Setup
+            resizeCanvas();
+            updateCoordinatesDisplay();
+
+            // Update display after each render
+            worker.onmessage = function(e) {
+                const { imageData, params } = e.data;
+                ctx.putImageData(imageData, 0, 0);
+                updateCoordinatesDisplay();
+            };
+
+            // Fractal Worker Script as a Blob
+            const workerScript = `
+                self.onmessage = function(e) {
+                    if (e.data.type === 'render') {
+                        const params = e.data.params;
+                        const imageData = renderFractal(params);
+                        self.postMessage({ imageData, params });
+                    }
+                };
+
+                function renderFractal(params) {
+                    const { minX, maxX, minY, maxY, fractalType, colorScheme, brightness, contrast, maxIter, width, height } = params;
+                    const imageData = new ImageData(width, height);
+                    const data = imageData.data;
+
+                    // Precompute values for performance
+                    const pixelRatioX = (maxX - minX) / width;
+                    const pixelRatioY = (maxY - minY) / height;
+
+                    // Julia Set Parameters
+                    const juliaC = { re: -0.7, im: 0.27015 };
+
+                    for (let py = 0; py < height; py++) {
+                        const y0 = minY + py * pixelRatioY;
+                        for (let px = 0; px < width; px++) {
+                            const x0 = minX + px * pixelRatioX;
+                            let x, y;
+                            if (fractalType === 'julia') {
+                                x = x0;
+                                y = y0;
+                            } else {
+                                x = 0;
+                                y = 0;
+                            }
+                            let iteration = 0;
+
+                            while ((x * x + y * y) <= 4 && iteration < maxIter) {
+                                let xTemp;
+                                switch (fractalType) {
+                                    case 'burningship':
+                                        xTemp = x * x - y * y + x0;
+                                        y = Math.abs(2 * x * y) + y0;
+                                        x = Math.abs(xTemp);
+                                        break;
+                                    case 'tricorn':
+                                        xTemp = x * x - y * y + x0;
+                                        y = -2 * x * y + y0;
+                                        x = xTemp;
+                                        break;
+                                    case 'julia':
+                                        xTemp = x * x - y * y + juliaC.re;
+                                        y = 2 * x * y + juliaC.im;
+                                        x = xTemp;
+                                        break;
+                                    case 'newton':
+                                        // Newton-Raphson for z^3 - 1 = 0
+                                        const denominator = 3 * (x * x + y * y) * (x * x + y * y);
+                                        if (denominator === 0) break;
+                                        xTemp = (2 * x * (x * x - 3 * y * y) + x0) / denominator;
+                                        y = (2 * y * (3 * x * x - y * y) + y0) / denominator;
+                                        x = xTemp;
+                                        break;
+                                    case 'phoenix':
+                                        const p = 0.5667;
+                                        const q = -0.5;
+                                        xTemp = x * x - y * y + x0 + p * x;
+                                        y = 2 * x * y + y0 + q * y;
+                                        x = xTemp;
+                                        break;
+                                    default:
+                                        xTemp = x * x - y * y + x0;
+                                        y = 2 * x * y + y0;
+                                        x = xTemp;
+                                }
+                                iteration++;
+                            }
+
+                            const idx = 4 * (px + py * width);
+                            if (iteration === maxIter) {
+                                data[idx] = data[idx + 1] = data[idx + 2] = 0; // Black for points inside the set
+                            } else {
+                                const hue = (iteration / maxIter);
+                                const rgb = getColor(hue, colorScheme);
+                                data[idx] = clamp((rgb.r - 128) * contrast + 128 * brightness, 0, 255);
+                                data[idx + 1] = clamp((rgb.g - 128) * contrast + 128 * brightness, 0, 255);
+                                data[idx + 2] = clamp((rgb.b - 128) * contrast + 128 * brightness, 0, 255);
+                            }
+                            data[idx + 3] = 255; // Full opacity
+                        }
+                    }
+
+                    return imageData;
+                }
+
+                function getColor(hue, scheme) {
+                    let r, g, b;
+                    switch (scheme) {
+                        case 'blue':
+                            r = 0;
+                            g = 0;
+                            b = Math.floor(255 * hue);
+                            break;
+                        case 'red':
+                            r = Math.floor(255 * hue);
+                            g = 0;
+                            b = 0;
+                            break;
+                        case 'green':
+                            r = 0;
+                            g = Math.floor(255 * hue);
+                            b = 0;
+                            break;
+                        case 'purple':
+                            r = Math.floor(255 * hue);
+                            g = 0;
+                            b = Math.floor(255 * hue);
+                            break;
+                        case 'rainbow':
+                            const c = 3 * hue;
+                            if (c < 1) {
+                                r = Math.floor(255 * c);
+                                g = 0;
+                                b = Math.floor(255 * (1 - c));
+                            } else if (c < 2) {
+                                r = Math.floor(255 * (2 - c));
+                                g = Math.floor(255 * (c - 1));
+                                b = 0;
+                            } else {
+                                r = 0;
+                                g = Math.floor(255 * (3 - c));
+                                b = Math.floor(255 * (c - 2));
+                            }
+                            break;
+                        case 'grayscale':
+                            const gray = Math.floor(255 * hue);
+                            r = g = b = gray;
+                            break;
+                        default:
+                            // Default HSV to RGB conversion
+                            const hsv = hsvToRgb(hue, 0.8, 1);
+                            r = hsv.r;
+                            g = hsv.g;
+                            b = hsv.b;
+                    }
+                    return { r, g, b };
+                }
+
+                function hsvToRgb(h, s, v) {
+                    let r, g, b;
+                    let i = Math.floor(h * 6);
+                    let f = h * 6 - i;
+                    let p = v * (1 - s);
+                    let q = v * (1 - f * s);
+                    let t = v * (1 - (1 - f) * s);
+                    switch (i % 6) {
+                        case 0: r = v; g = t; b = p; break;
+                        case 1: r = q; g = v; b = p; break;
+                        case 2: r = p; g = v; b = t; break;
+                        case 3: r = p; g = q; b = v; break;
+                        case 4: r = t; g = p; b = v; break;
+                        case 5: r = v; g = p; b = q; break;
+                    }
+                    return {
+                        r: Math.floor(r * 255),
+                        g: Math.floor(g * 255),
+                        b: Math.floor(b * 255)
+                    };
+                }
+
+                function clamp(value, min, max) {
+                    return Math.max(min, Math.min(max, value));
+                }
+            `;
+        };
+    </script>
 </body>
 </html>
