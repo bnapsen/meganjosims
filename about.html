@@ -2,556 +2,731 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mandelbrot Set Smooth Zoom - Enhanced</title>
+    <title>Interactive Fractal Explorer with Advanced Sound Mapping</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1e1e1e; }
+        body { margin: 0; overflow: hidden; }
         canvas { display: block; cursor: crosshair; }
-        #controls {
+        #sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+        #sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        #sidebarToggle {
             position: absolute;
             top: 10px;
             left: 10px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        button {
-            padding: 10px;
-            font-size: 16px;
+            z-index: 11;
+            background: #fff;
+            border: none;
+            padding: 5px 10px;
             cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            background-color: #333;
-            color: white;
-            transition: background-color 0.3s;
+            border-radius: 3px;
         }
-        button:hover {
-            background-color: #555;
+        #sidebar h2 {
+            margin-top: 0;
         }
-        input[type="range"], select, input[type="text"] {
-            width: 150px;
+        #controls label {
+            display: block;
+            margin-bottom: 5px;
         }
-        label {
-            color: white;
-            font-size: 14px;
-        }
-        input[type="text"] {
-            background-color: #444;
-            border: none;
-            color: #fff;
-            padding: 5px;
-            border-radius: 4px;
+        #controls input[type="range"],
+        #controls select {
+            width: 100%;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <label for="centerXControl">Center X Coordinate:</label>
-        <input type="range" id="centerXControl" min="-2.5" max="1" step="0.01" value="-0.75">
-        <label for="centerYControl">Center Y Coordinate:</label>
-        <input type="range" id="centerYControl" min="-1" max="1" step="0.01" value="0">
-        <label for="fractalTypeControl">Fractal Type:</label>
-        <select id="fractalTypeControl">
-            <option value="mandelbrot">Mandelbrot</option>
-            <option value="julia">Julia Set</option>
-            <option value="burningship">Burning Ship</option>
-            <option value="tricorn">Tricorn</option>
-            <option value="newton">Newton Fractal</option>
-            <option value="phoenix">Phoenix Fractal</option>
-        </select>
-        <label for="brightnessControl">Brightness:</label>
-        <input type="range" id="brightnessControl" min="0.5" max="2" step="0.1" value="1">
-        <label for="contrastControl">Contrast:</label>
-        <input type="range" id="contrastControl" min="0.5" max="2" step="0.1" value="1">
-        <label for="colorControl">Color Scheme:</label>
-        <select id="colorControl">
-            <option value="default">Default</option>
-            <option value="blue">Blue</option>
-            <option value="red">Red</option>
-            <option value="green">Green</option>
-            <option value="purple">Purple</option>
-            <option value="rainbow">Rainbow</option>
-            <option value="grayscale">Grayscale</option>
-        </select>
-        <button id="resetBtn">Reset</button>
-        <button id="saveImageBtn">Save Image</button>
-        <label for="coordinatesDisplay">Center Coordinates:</label>
-        <input type="text" id="coordinatesDisplay" readonly>
-        <label for="zoomLevelDisplay">Zoom Level:</label>
-        <input type="text" id="zoomLevelDisplay" readonly>
-        <button id="zoomToggleBtn">Start Zoom Animation</button>
-        <label for="speedControl">Speed (ms):</label>
-        <input type="range" id="speedControl" min="500" max="10000" value="3000">
-        <label for="maxIterControl">Max Iterations:</label>
-        <input type="range" id="maxIterControl" min="100" max="2000" value="500">
-        <label for="zoomFactorControl">Zoom Factor (per step):</label>
-        <input type="range" id="zoomFactorControl" min="990" max="999" value="993">
+    <button id="sidebarToggle">Toggle Controls</button>
+    <div id="sidebar" class="collapsed">
+        <h2>Fractal Controls</h2>
+        <div id="controls">
+            <label for="fractalSelect">Select Fractal:</label>
+            <select id="fractalSelect">
+                <option value="mandelbrot">Mandelbrot Set</option>
+                <option value="julia">Julia Set</option>
+                <option value="burningShip">Burning Ship Fractal</option>
+                <option value="tricorn">Tricorn Fractal</option>
+                <option value="multibrot3">Multibrot (Power 3)</option>
+            </select>
+
+            <label for="colorScheme">Color Scheme:</label>
+            <select id="colorScheme">
+                <option value="hue">Hue</option>
+                <option value="grayscale">Grayscale</option>
+                <option value="rainbow">Rainbow</option>
+            </select>
+
+            <label for="maxIterations">Max Iterations: <span id="maxIterationsValue">100</span></label>
+            <input type="range" id="maxIterations" min="50" max="1000" value="100">
+
+            <h2>Sound Controls</h2>
+            <label for="minFreq">Min Frequency (Hz): <span id="minFreqValue">200</span></label>
+            <input type="range" id="minFreq" min="100" max="500" value="200">
+
+            <label for="maxFreq">Max Frequency (Hz): <span id="maxFreqValue">1000</span></label>
+            <input type="range" id="maxFreq" min="500" max="2000" value="1000">
+
+            <label for="attackTime">Attack Time (s): <span id="attackTimeValue">0.02</span></label>
+            <input type="range" id="attackTime" min="0.01" max="0.1" step="0.01" value="0.02">
+
+            <label for="decayTime">Decay Time (s): <span id="decayTimeValue">0.1</span></label>
+            <input type="range" id="decayTime" min="0.05" max="0.5" step="0.05" value="0.1">
+
+            <label for="sustainLevel">Sustain Level: <span id="sustainLevelValue">0.3</span></label>
+            <input type="range" id="sustainLevel" min="0" max="1" step="0.1" value="0.3">
+
+            <label for="releaseTime">Release Time (s): <span id="releaseTimeValue">1.0</span></label>
+            <input type="range" id="releaseTime" min="0.5" max="5" step="0.5" value="1.0">
+
+            <label for="complexSound">Enable Complex Sound Mapping:</label>
+            <input type="checkbox" id="complexSound" checked>
+
+            <h2>Auto Zoom</h2>
+            <label for="autoZoom">Enable Auto Zoom:</label>
+            <input type="checkbox" id="autoZoom">
+
+            <label for="zoomSpeed">Zoom Speed: <span id="zoomSpeedValue">0.99</span></label>
+            <input type="range" id="zoomSpeed" min="0.9" max="0.999" step="0.001" value="0.99">
+        </div>
     </div>
-    <canvas id="mandelbrotCanvas"></canvas>
+    <canvas id="fractalCanvas"></canvas>
 
     <script>
-        // Main thread script
         window.onload = function() {
-            const canvas = document.getElementById('mandelbrotCanvas');
+            const canvas = document.getElementById('fractalCanvas');
             const ctx = canvas.getContext('2d');
 
-            // Control Elements
-            const zoomToggleBtn = document.getElementById('zoomToggleBtn');
-            const speedControl = document.getElementById('speedControl');
-            const maxIterControl = document.getElementById('maxIterControl');
-            const zoomFactorControl = document.getElementById('zoomFactorControl');
-            const colorControl = document.getElementById('colorControl');
-            const fractalTypeControl = document.getElementById('fractalTypeControl');
-            const brightnessControl = document.getElementById('brightnessControl');
-            const contrastControl = document.getElementById('contrastControl');
-            const resetBtn = document.getElementById('resetBtn');
-            const coordinatesDisplay = document.getElementById('coordinatesDisplay');
-            const zoomLevelDisplay = document.getElementById('zoomLevelDisplay');
-            const saveImageBtn = document.getElementById('saveImageBtn');
-            const centerXControl = document.getElementById('centerXControl');
-            const centerYControl = document.getElementById('centerYControl');
+            // Sidebar controls
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const fractalSelect = document.getElementById('fractalSelect');
+            const colorSchemeSelect = document.getElementById('colorScheme');
+            const maxIterationsSlider = document.getElementById('maxIterations');
+            const maxIterationsValue = document.getElementById('maxIterationsValue');
 
-            // State Variables
+            // Sound controls
+            const minFreqSlider = document.getElementById('minFreq');
+            const minFreqValue = document.getElementById('minFreqValue');
+            const maxFreqSlider = document.getElementById('maxFreq');
+            const maxFreqValue = document.getElementById('maxFreqValue');
+            const attackTimeSlider = document.getElementById('attackTime');
+            const attackTimeValue = document.getElementById('attackTimeValue');
+            const decayTimeSlider = document.getElementById('decayTime');
+            const decayTimeValue = document.getElementById('decayTimeValue');
+            const sustainLevelSlider = document.getElementById('sustainLevel');
+            const sustainLevelValue = document.getElementById('sustainLevelValue');
+            const releaseTimeSlider = document.getElementById('releaseTime');
+            const releaseTimeValue = document.getElementById('releaseTimeValue');
+
+            // Complex sound mapping control
+            const complexSoundCheckbox = document.getElementById('complexSound');
+            let complexSoundEnabled = complexSoundCheckbox.checked;
+
+            // Auto Zoom controls
+            const autoZoomCheckbox = document.getElementById('autoZoom');
+            const zoomSpeedSlider = document.getElementById('zoomSpeed');
+            const zoomSpeedValue = document.getElementById('zoomSpeedValue');
+
+            // Initialize values
             let minX = -2.5, maxX = 1;
-            let minY = -1, maxY = 1;
+            let minY = -1.5, maxY = 1.5;
+
             let animating = false;
-            let animationDuration = parseInt(speedControl.value); // in milliseconds
-            let autoZoomFactor = parseFloat(zoomFactorControl.value) / 1000;
-            let autoZoomAnimationFrame;
-            let isDragging = false;
-            let startX, startY, endX, endY;
+            let animationStartTime;
+            let animationDuration = 500; // in milliseconds
+            let startMinX, startMaxX, startMinY, startMaxY;
+            let targetMinX, targetMaxX, targetMinY, targetMaxY;
 
-            // Web Worker Setup
-            let worker;
-            if (window.Worker) {
-                const workerBlob = new Blob([workerScript], { type: 'application/javascript' });
-                const workerURL = URL.createObjectURL(workerBlob);
-                worker = new Worker(workerURL);
-            } else {
-                alert("Your browser does not support Web Workers. The application may not perform optimally.");
-            }
+            let maxIter = parseInt(maxIterationsSlider.value);
 
-            // Handle messages from the worker
-            worker.onmessage = function(e) {
-                const imageData = e.data;
-                ctx.putImageData(imageData, 0, 0);
-            };
+            // Sound parameters
+            let minFreq = parseInt(minFreqSlider.value);
+            let maxFreq = parseInt(maxFreqSlider.value);
+            let attackTime = parseFloat(attackTimeSlider.value);
+            let decayTime = parseFloat(decayTimeSlider.value);
+            let sustainLevel = parseFloat(sustainLevelSlider.value);
+            let releaseTime = parseFloat(releaseTimeSlider.value);
 
-            // Initialize parameters and render
-            function initializeFractal() {
-                const params = getCurrentParameters();
-                worker.postMessage({ type: 'render', params });
-            }
+            // Auto Zoom parameters
+            let autoZoom = false;
+            let zoomSpeed = parseFloat(zoomSpeedSlider.value);
 
-            // Get current parameters from controls
-            function getCurrentParameters() {
-                const fractalType = fractalTypeControl.value;
-                const colorScheme = colorControl.value;
-                const brightness = parseFloat(brightnessControl.value);
-                const contrast = parseFloat(contrastControl.value);
-                const maxIter = parseInt(maxIterControl.value);
-                const width = canvas.width;
-                const height = canvas.height;
-                const centerX = (minX + maxX) / 2;
-                const centerY = (minY + maxY) / 2;
-                const zoomLevel = (1 / (maxX - minX)).toFixed(2);
+            // Orbit points
+            let orbitPoints = [];
 
-                return {
-                    minX, maxX, minY, maxY,
-                    fractalType,
-                    colorScheme,
-                    brightness,
-                    contrast,
-                    maxIter,
-                    width,
-                    height
-                };
-            }
+            // Current fractal type and color scheme
+            let fractalType = fractalSelect.value;
+            let colorScheme = colorSchemeSelect.value;
 
-            // Resize Canvas
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                initializeFractal();
+                drawFractal();
             }
 
             window.addEventListener('resize', resizeCanvas);
 
-            // Control Event Listeners
-            speedControl.addEventListener('input', () => {
-                animationDuration = parseInt(speedControl.value);
+            // Sidebar toggle
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
             });
 
-            maxIterControl.addEventListener('input', () => {
-                initializeFractal();
-            });
-
-            zoomFactorControl.addEventListener('input', () => {
-                autoZoomFactor = parseFloat(zoomFactorControl.value) / 1000;
-            });
-
-            colorControl.addEventListener('change', () => {
-                initializeFractal();
-            });
-
-            fractalTypeControl.addEventListener('change', () => {
-                initializeFractal();
-            });
-
-            brightnessControl.addEventListener('input', () => {
-                initializeFractal();
-            });
-
-            contrastControl.addEventListener('input', () => {
-                initializeFractal();
-            });
-
-            resetBtn.addEventListener('click', resetView);
-            saveImageBtn.addEventListener('click', saveImage);
-
-            zoomToggleBtn.addEventListener('click', () => {
-                animating = !animating;
-                if (animating) {
-                    zoomToggleBtn.textContent = 'Stop Zoom Animation';
-                    startAutoZoomSmooth();
-                } else {
-                    zoomToggleBtn.textContent = 'Start Zoom Animation';
-                    cancelAnimationFrame(autoZoomAnimationFrame);
-                }
-            });
-
-            // Mouse and Touch Events for Zooming
-            canvas.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                startX = e.offsetX;
-                startY = e.offsetY;
-            });
-
-            canvas.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    endX = e.offsetX;
-                    endY = e.offsetY;
-                    drawMandelbrot(); // Redraw base fractal
-                    drawZoomBox();
-                }
-            });
-
-            canvas.addEventListener('mouseup', (e) => {
-                if (isDragging) {
-                    isDragging = false;
-                    endX = e.offsetX;
-                    endY = e.offsetY;
-                    applyZoomBox();
-                }
-            });
-
-            // Touch Events for Mobile Devices
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (e.touches.length === 1) {
-                    const touch = e.touches[0];
-                    const rect = canvas.getBoundingClientRect();
-                    startX = touch.clientX - rect.left;
-                    startY = touch.clientY - rect.top;
-                    isDragging = true;
-                }
-            });
-
-            canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                if (isDragging && e.touches.length === 1) {
-                    const touch = e.touches[0];
-                    const rect = canvas.getBoundingClientRect();
-                    endX = touch.clientX - rect.left;
-                    endY = touch.clientY - rect.top;
-                    drawMandelbrot(); // Redraw base fractal
-                    drawZoomBox();
-                }
-            });
-
-            canvas.addEventListener('touchend', (e) => {
-                if (isDragging) {
-                    isDragging = false;
-                    applyZoomBox();
-                }
-            });
-
-            // Drawing Functions
-            function drawZoomBox() {
-                ctx.strokeStyle = 'yellow';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([6, 4]);
-                const rectX = Math.min(startX, endX);
-                const rectY = Math.min(startY, endY);
-                const rectWidth = Math.abs(endX - startX);
-                const rectHeight = Math.abs(endY - startY);
-                ctx.strokeRect(rectX, rectY, rectWidth, rectHeight);
-                ctx.setLineDash([]);
+            // Update controls display values
+            function updateControlDisplay() {
+                maxIterationsValue.textContent = maxIter;
+                minFreqValue.textContent = minFreq;
+                maxFreqValue.textContent = maxFreq;
+                attackTimeValue.textContent = attackTime;
+                decayTimeValue.textContent = decayTime;
+                sustainLevelValue.textContent = sustainLevel;
+                releaseTimeValue.textContent = releaseTime;
+                zoomSpeedValue.textContent = zoomSpeed;
             }
 
-            function applyZoomBox() {
+            // Event listeners for controls
+            fractalSelect.addEventListener('change', function() {
+                fractalType = fractalSelect.value;
+                resetView();
+                drawFractal();
+            });
+
+            colorSchemeSelect.addEventListener('change', function() {
+                colorScheme = colorSchemeSelect.value;
+                drawFractal();
+            });
+
+            maxIterationsSlider.addEventListener('input', function() {
+                maxIter = parseInt(maxIterationsSlider.value);
+                updateControlDisplay();
+                drawFractal();
+            });
+
+            minFreqSlider.addEventListener('input', function() {
+                minFreq = parseInt(minFreqSlider.value);
+                updateControlDisplay();
+            });
+
+            maxFreqSlider.addEventListener('input', function() {
+                maxFreq = parseInt(maxFreqSlider.value);
+                updateControlDisplay();
+            });
+
+            attackTimeSlider.addEventListener('input', function() {
+                attackTime = parseFloat(attackTimeSlider.value);
+                updateControlDisplay();
+            });
+
+            decayTimeSlider.addEventListener('input', function() {
+                decayTime = parseFloat(decayTimeSlider.value);
+                updateControlDisplay();
+            });
+
+            sustainLevelSlider.addEventListener('input', function() {
+                sustainLevel = parseFloat(sustainLevelSlider.value);
+                updateControlDisplay();
+            });
+
+            releaseTimeSlider.addEventListener('input', function() {
+                releaseTime = parseFloat(releaseTimeSlider.value);
+                updateControlDisplay();
+            });
+
+            complexSoundCheckbox.addEventListener('change', function() {
+                complexSoundEnabled = complexSoundCheckbox.checked;
+            });
+
+            autoZoomCheckbox.addEventListener('change', function() {
+                autoZoom = autoZoomCheckbox.checked;
+                if (autoZoom) {
+                    startAutoZoom();
+                }
+            });
+
+            zoomSpeedSlider.addEventListener('input', function() {
+                zoomSpeed = parseFloat(zoomSpeedSlider.value);
+                updateControlDisplay();
+            });
+
+            function resetView() {
+                // Reset to default view coordinates
+                minX = -2.5; maxX = 1;
+                minY = -1.5; maxY = 1.5;
+                orbitPoints = [];
+            }
+
+            function drawFractal() {
                 const width = canvas.width;
                 const height = canvas.height;
 
-                const x0 = Math.min(startX, endX);
-                const x1 = Math.max(startX, endX);
-                const y0 = Math.min(startY, endY);
-                const y1 = Math.max(startY, endY);
+                const imageData = ctx.createImageData(width, height);
+                const data = imageData.data;
 
-                // Ensure minimum zoom box size
-                if (Math.abs(x1 - x0) < 10 || Math.abs(y1 - y0) < 10) {
-                    return;
-                }
+                for (let py = 0; py < height; py++) {
+                    const y0 = minY + (py / height) * (maxY - minY);
+                    for (let px = 0; px < width; px++) {
+                        const x0 = minX + (px / width) * (maxX - minX);
+                        let iteration = 0;
+                        let escaped = false;
+                        let x, y;
+                        let c_re, c_im;
 
-                const newMinX = minX + (x0 / width) * (maxX - minX);
-                const newMaxX = minX + (x1 / width) * (maxX - minX);
-                const newMinY = minY + (y0 / height) * (maxY - minY);
-                const newMaxY = minY + (y1 / height) * (maxY - minY);
-
-                minX = newMinX;
-                maxX = newMaxX;
-                minY = newMinY;
-                maxY = newMaxY;
-
-                initializeFractal();
-            }
-
-            function startAutoZoomSmooth() {
-                if (!animating) return;
-
-                const params = getCurrentParameters();
-                const centerX = (minX + maxX) / 2;
-                const centerY = (minY + maxY) / 2;
-                const rangeX = (maxX - minX) * autoZoomFactor;
-                const rangeY = (maxY - minY) * autoZoomFactor;
-
-                // Smooth interpolation
-                minX = lerp(minX, centerX - rangeX / 2, 0.05);
-                maxX = lerp(maxX, centerX + rangeX / 2, 0.05);
-                minY = lerp(minY, centerY - rangeY / 2, 0.05);
-                maxY = lerp(maxY, centerY + rangeY / 2, 0.05);
-
-                initializeFractal();
-
-                autoZoomAnimationFrame = setTimeout(startAutoZoomSmooth, animationDuration);
-            }
-
-            function lerp(start, end, t) {
-                return start + (end - start) * t;
-            }
-
-            function updateCoordinatesDisplay() {
-                const centerX = (minX + maxX) / 2;
-                const centerY = (minY + maxY) / 2;
-                coordinatesDisplay.value = `X: ${centerX.toFixed(5)}, Y: ${centerY.toFixed(5)}`;
-                zoomLevelDisplay.value = `Zoom: ${(1 / (maxX - minX)).toFixed(2)}x`;
-            }
-
-            function resetView() {
-                minX = -2.5;
-                maxX = 1;
-                minY = -1;
-                maxY = 1;
-                initializeFractal();
-            }
-
-            function saveImage() {
-                const link = document.createElement('a');
-                link.download = 'fractal.png';
-                link.href = canvas.toDataURL();
-                link.click();
-            }
-
-            // Initial Setup
-            resizeCanvas();
-            updateCoordinatesDisplay();
-
-            // Update display after each render
-            worker.onmessage = function(e) {
-                const { imageData, params } = e.data;
-                ctx.putImageData(imageData, 0, 0);
-                updateCoordinatesDisplay();
-            };
-
-            // Fractal Worker Script as a Blob
-            const workerScript = `
-                self.onmessage = function(e) {
-                    if (e.data.type === 'render') {
-                        const params = e.data.params;
-                        const imageData = renderFractal(params);
-                        self.postMessage({ imageData, params });
-                    }
-                };
-
-                function renderFractal(params) {
-                    const { minX, maxX, minY, maxY, fractalType, colorScheme, brightness, contrast, maxIter, width, height } = params;
-                    const imageData = new ImageData(width, height);
-                    const data = imageData.data;
-
-                    // Precompute values for performance
-                    const pixelRatioX = (maxX - minX) / width;
-                    const pixelRatioY = (maxY - minY) / height;
-
-                    // Julia Set Parameters
-                    const juliaC = { re: -0.7, im: 0.27015 };
-
-                    for (let py = 0; py < height; py++) {
-                        const y0 = minY + py * pixelRatioY;
-                        for (let px = 0; px < width; px++) {
-                            const x0 = minX + px * pixelRatioX;
-                            let x, y;
-                            if (fractalType === 'julia') {
-                                x = x0;
-                                y = y0;
-                            } else {
-                                x = 0;
-                                y = 0;
-                            }
-                            let iteration = 0;
-
-                            while ((x * x + y * y) <= 4 && iteration < maxIter) {
-                                let xTemp;
-                                switch (fractalType) {
-                                    case 'burningship':
-                                        xTemp = x * x - y * y + x0;
-                                        y = Math.abs(2 * x * y) + y0;
-                                        x = Math.abs(xTemp);
-                                        break;
-                                    case 'tricorn':
-                                        xTemp = x * x - y * y + x0;
-                                        y = -2 * x * y + y0;
-                                        x = xTemp;
-                                        break;
-                                    case 'julia':
-                                        xTemp = x * x - y * y + juliaC.re;
-                                        y = 2 * x * y + juliaC.im;
-                                        x = xTemp;
-                                        break;
-                                    case 'newton':
-                                        // Newton-Raphson for z^3 - 1 = 0
-                                        const denominator = 3 * (x * x + y * y) * (x * x + y * y);
-                                        if (denominator === 0) break;
-                                        xTemp = (2 * x * (x * x - 3 * y * y) + x0) / denominator;
-                                        y = (2 * y * (3 * x * x - y * y) + y0) / denominator;
-                                        x = xTemp;
-                                        break;
-                                    case 'phoenix':
-                                        const p = 0.5667;
-                                        const q = -0.5;
-                                        xTemp = x * x - y * y + x0 + p * x;
-                                        y = 2 * x * y + y0 + q * y;
-                                        x = xTemp;
-                                        break;
-                                    default:
-                                        xTemp = x * x - y * y + x0;
-                                        y = 2 * x * y + y0;
-                                        x = xTemp;
-                                }
-                                iteration++;
-                            }
-
-                            const idx = 4 * (px + py * width);
-                            if (iteration === maxIter) {
-                                data[idx] = data[idx + 1] = data[idx + 2] = 0; // Black for points inside the set
-                            } else {
-                                const hue = (iteration / maxIter);
-                                const rgb = getColor(hue, colorScheme);
-                                data[idx] = clamp((rgb.r - 128) * contrast + 128 * brightness, 0, 255);
-                                data[idx + 1] = clamp((rgb.g - 128) * contrast + 128 * brightness, 0, 255);
-                                data[idx + 2] = clamp((rgb.b - 128) * contrast + 128 * brightness, 0, 255);
-                            }
-                            data[idx + 3] = 255; // Full opacity
+                        // Initialize x and y based on fractal type
+                        if (fractalType === 'julia') {
+                            x = x0;
+                            y = y0;
+                            c_re = -0.7; // You can make this adjustable
+                            c_im = 0.27015;
+                        } else {
+                            x = 0;
+                            y = 0;
+                            c_re = x0;
+                            c_im = y0;
                         }
-                    }
 
-                    return imageData;
-                }
+                        while (iteration < maxIter) {
+                            let x_new, y_new;
 
-                function getColor(hue, scheme) {
-                    let r, g, b;
-                    switch (scheme) {
-                        case 'blue':
-                            r = 0;
-                            g = 0;
-                            b = Math.floor(255 * hue);
-                            break;
-                        case 'red':
-                            r = Math.floor(255 * hue);
-                            g = 0;
-                            b = 0;
-                            break;
-                        case 'green':
-                            r = 0;
-                            g = Math.floor(255 * hue);
-                            b = 0;
-                            break;
-                        case 'purple':
-                            r = Math.floor(255 * hue);
-                            g = 0;
-                            b = Math.floor(255 * hue);
-                            break;
-                        case 'rainbow':
-                            const c = 3 * hue;
-                            if (c < 1) {
-                                r = Math.floor(255 * c);
-                                g = 0;
-                                b = Math.floor(255 * (1 - c));
-                            } else if (c < 2) {
-                                r = Math.floor(255 * (2 - c));
-                                g = Math.floor(255 * (c - 1));
-                                b = 0;
-                            } else {
-                                r = 0;
-                                g = Math.floor(255 * (3 - c));
-                                b = Math.floor(255 * (c - 2));
+                            switch (fractalType) {
+                                case 'mandelbrot':
+                                    x_new = x * x - y * y + c_re;
+                                    y_new = 2 * x * y + c_im;
+                                    break;
+                                case 'julia':
+                                    x_new = x * x - y * y + c_re;
+                                    y_new = 2 * x * y + c_im;
+                                    break;
+                                case 'burningShip':
+                                    x_new = x * x - y * y + c_re;
+                                    y_new = 2 * Math.abs(x * y) + c_im;
+                                    x_new = Math.abs(x_new);
+                                    y_new = Math.abs(y_new);
+                                    break;
+                                case 'tricorn':
+                                    x_new = x * x - y * y + c_re;
+                                    y_new = -2 * x * y + c_im;
+                                    break;
+                                case 'multibrot3': {
+                                    let x2 = x * x;
+                                    let y2 = y * y;
+                                    let x3 = x * x2 - 3 * x * y2;
+                                    let y3 = 3 * x2 * y - y * y2;
+                                    x_new = x3 + c_re;
+                                    y_new = y3 + c_im;
+                                    break;
+                                }
+                                default:
+                                    x_new = x * x - y * y + c_re;
+                                    y_new = 2 * x * y + c_im;
+                                    break;
                             }
+
+                            x = x_new;
+                            y = y_new;
+
+                            if (x * x + y * y > 4) {
+                                escaped = true;
+                                break;
+                            }
+
+                            iteration++;
+                        }
+
+                        const idx = 4 * (px + py * width);
+
+                        if (!escaped) {
+                            data[idx] = data[idx + 1] = data[idx + 2] = 0;
+                        } else {
+                            // Apply color schemes
+                            switch (colorScheme) {
+                                case 'hue':
+                                    const hue = iteration / maxIter;
+                                    const rgb = HSVtoRGB(hue, 1, 1);
+                                    data[idx] = rgb.r;
+                                    data[idx + 1] = rgb.g;
+                                    data[idx + 2] = rgb.b;
+                                    break;
+                                case 'grayscale':
+                                    const gray = Math.floor((iteration / maxIter) * 255);
+                                    data[idx] = data[idx + 1] = data[idx + 2] = gray;
+                                    break;
+                                case 'rainbow':
+                                    const rainbowRgb = rainbowColor(iteration / maxIter);
+                                    data[idx] = rainbowRgb.r;
+                                    data[idx + 1] = rainbowRgb.g;
+                                    data[idx + 2] = rainbowRgb.b;
+                                    break;
+                            }
+                        }
+                        data[idx + 3] = 255;
+                    }
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+
+                // Draw the orbit if it exists
+                if (orbitPoints.length > 0) {
+                    drawOrbit();
+                }
+            }
+
+            function HSVtoRGB(h, s, v) {
+                let r, g, b;
+                let i = Math.floor(h * 6);
+                let f = h * 6 - i;
+                let p = v * (1 - s);
+                let q = v * (1 - f * s);
+                let t = v * (1 - (1 - f) * s);
+
+                switch (i % 6) {
+                    case 0: r = v; g = t; b = p; break;
+                    case 1: r = q; g = v; b = p; break;
+                    case 2: r = p; g = v; b = t; break;
+                    case 3: r = p; g = q; b = v; break;
+                    case 4: r = t; g = p; b = v; break;
+                    case 5: r = v; g = p; b = q; break;
+                }
+
+                return {
+                    r: Math.floor(r * 255),
+                    g: Math.floor(g * 255),
+                    b: Math.floor(b * 255)
+                };
+            }
+
+            function rainbowColor(t) {
+                t = t * 0.8 + 0.2; // Adjust to make colors more vivid
+                const a = (1 - t) / 0.2;
+                const X = Math.floor(a);
+                const Y = Math.floor(255 * (a - X));
+                switch (X) {
+                    case 0: return { r: 255, g: Y, b: 0 };
+                    case 1: return { r: 255 - Y, g: 255, b: 0 };
+                    case 2: return { r: 0, g: 255, b: Y };
+                    case 3: return { r: 0, g: 255 - Y, b: 255 };
+                    case 4: return { r: Y, g: 0, b: 255 };
+                    case 5: return { r: 255, g: 0, b: 255 };
+                    default: return { r: 255, g: 0, b: 0 };
+                }
+            }
+
+            function zoom(factor, centerX, centerY) {
+                if (animating) return; // Prevent multiple animations at once
+
+                startMinX = minX;
+                startMaxX = maxX;
+                startMinY = minY;
+                startMaxY = maxY;
+
+                const rangeX = maxX - minX;
+                const rangeY = maxY - minY;
+
+                const newRangeX = rangeX * factor;
+                const newRangeY = rangeY * factor;
+
+                targetMinX = centerX - newRangeX / 2;
+                targetMaxX = centerX + newRangeX / 2;
+                targetMinY = centerY - newRangeY / 2;
+                targetMaxY = centerY + newRangeY / 2;
+
+                animating = true;
+                animationStartTime = performance.now();
+                requestAnimationFrame(animateZoom);
+            }
+
+            function animateZoom(timestamp) {
+                let progress = (timestamp - animationStartTime) / animationDuration;
+                if (progress >= 1) {
+                    progress = 1;
+                    animating = false;
+                }
+
+                // Interpolate between start and target boundaries
+                minX = startMinX + (targetMinX - startMinX) * progress;
+                maxX = startMaxX + (targetMaxX - startMaxX) * progress;
+                minY = startMinY + (targetMinY - startMinY) * progress;
+                maxY = startMaxY + (targetMaxY - startMaxY) * progress;
+
+                drawFractal();
+
+                if (animating) {
+                    requestAnimationFrame(animateZoom);
+                } else if (autoZoom) {
+                    // Continue auto-zooming
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+                    zoom(zoomSpeed, centerX, centerY);
+                }
+            }
+
+            function startAutoZoom() {
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                zoom(zoomSpeed, centerX, centerY);
+            }
+
+            function getComplexCoord(pixelX, pixelY) {
+                const width = canvas.width;
+                const height = canvas.height;
+                const x = minX + (pixelX / width) * (maxX - minX);
+                const y = minY + (pixelY / height) * (maxY - minY);
+                return { x: x, y: y };
+            }
+
+            function getPixelCoord(x, y) {
+                const width = canvas.width;
+                const height = canvas.height;
+                const pixelX = Math.floor((x - minX) / (maxX - minX) * width);
+                const pixelY = Math.floor((y - minY) / (maxY - minY) * height);
+                return { x: pixelX, y: pixelY };
+            }
+
+            function computeOrbit(c_re, c_im, maxIterations) {
+                let orbit = [];
+                let x, y;
+
+                if (fractalType === 'julia') {
+                    x = c_re;
+                    y = c_im;
+                    c_re = -0.7; // You can make this adjustable
+                    c_im = 0.27015;
+                } else {
+                    x = 0;
+                    y = 0;
+                }
+
+                for (let i = 0; i < maxIterations; i++) {
+                    let x_new, y_new;
+
+                    switch (fractalType) {
+                        case 'mandelbrot':
+                            x_new = x * x - y * y + c_re;
+                            y_new = 2 * x * y + c_im;
                             break;
-                        case 'grayscale':
-                            const gray = Math.floor(255 * hue);
-                            r = g = b = gray;
+                        case 'julia':
+                            x_new = x * x - y * y + c_re;
+                            y_new = 2 * x * y + c_im;
                             break;
+                        case 'burningShip':
+                            x_new = x * x - y * y + c_re;
+                            y_new = 2 * Math.abs(x * y) + c_im;
+                            x_new = Math.abs(x_new);
+                            y_new = Math.abs(y_new);
+                            break;
+                        case 'tricorn':
+                            x_new = x * x - y * y + c_re;
+                            y_new = -2 * x * y + c_im;
+                            break;
+                        case 'multibrot3': {
+                            let x2 = x * x;
+                            let y2 = y * y;
+                            let x3 = x * x2 - 3 * x * y2;
+                            let y3 = 3 * x2 * y - y * y2;
+                            x_new = x3 + c_re;
+                            y_new = y3 + c_im;
+                            break;
+                        }
                         default:
-                            // Default HSV to RGB conversion
-                            const hsv = hsvToRgb(hue, 0.8, 1);
-                            r = hsv.r;
-                            g = hsv.g;
-                            b = hsv.b;
+                            x_new = x * x - y * y + c_re;
+                            y_new = 2 * x * y + c_im;
+                            break;
                     }
-                    return { r, g, b };
+
+                    x = x_new;
+                    y = y_new;
+
+                    orbit.push({ x: x, y: y });
+                    if (x * x + y * y > 4) break;
+                }
+                return orbit;
+            }
+
+            function drawOrbit() {
+                ctx.save();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                let firstPoint = getPixelCoord(orbitPoints[0].x, orbitPoints[0].y);
+                ctx.moveTo(firstPoint.x, firstPoint.y);
+                for (let i = 1; i < orbitPoints.length; i++) {
+                    let point = getPixelCoord(orbitPoints[i].x, orbitPoints[i].y);
+                    ctx.lineTo(point.x, point.y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function handleWheel(event) {
+                event.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                const zoomFactor = event.deltaY < 0 ? 0.8 : 1.25;
+                const coord = getComplexCoord(mouseX, mouseY);
+                zoom(zoomFactor, coord.x, coord.y);
+
+                // Clear orbit points when zooming
+                orbitPoints = [];
+            }
+
+            function handleClick(event) {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
                 }
 
-                function hsvToRgb(h, s, v) {
-                    let r, g, b;
-                    let i = Math.floor(h * 6);
-                    let f = h * 6 - i;
-                    let p = v * (1 - s);
-                    let q = v * (1 - f * s);
-                    let t = v * (1 - (1 - f) * s);
-                    switch (i % 6) {
-                        case 0: r = v; g = t; b = p; break;
-                        case 1: r = q; g = v; b = p; break;
-                        case 2: r = p; g = v; b = t; break;
-                        case 3: r = p; g = q; b = v; break;
-                        case 4: r = t; g = p; b = v; break;
-                        case 5: r = v; g = p; b = q; break;
-                    }
-                    return {
-                        r: Math.floor(r * 255),
-                        g: Math.floor(g * 255),
-                        b: Math.floor(b * 255)
-                    };
-                }
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                const coord = getComplexCoord(mouseX, mouseY);
 
-                function clamp(value, min, max) {
-                    return Math.max(min, Math.min(max, value));
+                // Compute the orbit and store it
+                orbitPoints = computeOrbit(coord.x, coord.y, maxIter);
+
+                // Redraw to show the orbit
+                drawFractal();
+
+                // Play a tone based on the orbit
+                playToneBasedOnOrbit(orbitPoints);
+            }
+
+            function handleRightClick(event) {
+                event.preventDefault();
+                // Do nothing or you can implement custom context menu
+            }
+
+            canvas.addEventListener('wheel', handleWheel);
+            canvas.addEventListener('click', handleClick);
+            canvas.addEventListener('contextmenu', handleRightClick);
+
+            // Audio context for generating sounds
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create a reverb effect using ConvolverNode
+            const convolver = audioCtx.createConvolver();
+
+            // Load an impulse response for reverb
+            fetch('https://cdn.jsdelivr.net/gh/mdn/webaudio-examples/voice-change-o-matic/audio/concert-crowd.ogg')
+                .then(response => response.arrayBuffer())
+                .then(undecodedAudio => audioCtx.decodeAudioData(undecodedAudio))
+                .then(audioBuffer => {
+                    convolver.buffer = audioBuffer;
+                });
+
+            function playToneBasedOnOrbit(orbit) {
+                if (!orbit || orbit.length === 0) return;
+
+                if (complexSoundEnabled) {
+                    playComplexTone(orbit);
+                } else {
+                    playSimpleTone(orbit);
                 }
-            `;
+            }
+
+            function playSimpleTone(orbit) {
+                // Original implementation for single note
+                let orbitLength = orbit.length;
+
+                // Normalize orbit length to a value between minFreq and maxFreq
+                let freq = minFreq + (orbitLength / maxIter) * (maxFreq - minFreq);
+
+                // Create an oscillator node
+                let oscillator = audioCtx.createOscillator();
+                oscillator.type = 'sine'; // Waveform type
+
+                // Set the frequency
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                // Create a gain node to control the volume envelope
+                let gainNode = audioCtx.createGain();
+                let now = audioCtx.currentTime;
+
+                // ADSR envelope parameters (from controls)
+                let totalDuration = attackTime + decayTime + releaseTime;
+
+                // Set initial gain to 0 (silence)
+                gainNode.gain.setValueAtTime(0, now);
+
+                // Attack: Ramp up to maximum gain
+                gainNode.gain.linearRampToValueAtTime(1.0, now + attackTime);
+
+                // Decay: Ramp down to sustain level
+                gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime);
+
+                // Sustain: Hold the sustain level until release
+                gainNode.gain.setValueAtTime(sustainLevel, now + attackTime + decayTime);
+
+                // Release: Ramp down to 0
+                gainNode.gain.linearRampToValueAtTime(0, now + totalDuration);
+
+                // Connect the oscillator to the gain node
+                oscillator.connect(gainNode);
+
+                // Connect the gain node to the convolver (reverb), then to the destination
+                gainNode.connect(convolver);
+                convolver.connect(audioCtx.destination);
+
+                // Start the oscillator
+                oscillator.start(now);
+
+                // Stop the oscillator after the total duration
+                oscillator.stop(now + totalDuration);
+            }
+
+            function playComplexTone(orbit) {
+                // Play a sequence of notes based on the orbit points
+                let now = audioCtx.currentTime;
+                let timePerNote = 0.1; // Duration of each note in seconds
+
+                orbit.forEach((point, index) => {
+                    let magnitude = Math.sqrt(point.x * point.x + point.y * point.y);
+                    let angle = Math.atan2(point.y, point.x);
+
+                    // Map magnitude and angle to frequency and panning
+                    let freq = minFreq + ((magnitude % 4) / 4) * (maxFreq - minFreq);
+                    let panValue = Math.sin(angle); // Pan based on angle
+
+                    // Create oscillator and gain nodes
+                    let oscillator = audioCtx.createOscillator();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(freq, now + index * timePerNote);
+
+                    let gainNode = audioCtx.createGain();
+                    gainNode.gain.setValueAtTime(0, now + index * timePerNote);
+                    gainNode.gain.linearRampToValueAtTime(1.0, now + index * timePerNote + attackTime);
+                    gainNode.gain.linearRampToValueAtTime(sustainLevel, now + index * timePerNote + attackTime + decayTime);
+                    gainNode.gain.setValueAtTime(sustainLevel, now + index * timePerNote + attackTime + decayTime);
+                    gainNode.gain.linearRampToValueAtTime(0, now + (index + 1) * timePerNote);
+
+                    // Create a stereo panner node
+                    let panner = audioCtx.createStereoPanner();
+                    panner.pan.setValueAtTime(panValue, now + index * timePerNote);
+
+                    // Connect nodes
+                    oscillator.connect(gainNode);
+                    gainNode.connect(panner);
+                    panner.connect(convolver);
+
+                    oscillator.start(now + index * timePerNote);
+                    oscillator.stop(now + (index + 1) * timePerNote);
+                });
+
+                convolver.connect(audioCtx.destination);
+            }
+
+            // Initial draw
+            updateControlDisplay();
+            resizeCanvas();
         };
     </script>
 </body>
